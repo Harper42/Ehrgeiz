@@ -1,19 +1,15 @@
 {
   "name": "ehrgeiz",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Gamified productivity app",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npx tailwindcss -i ./input.css -o ./output.css --minify",
+    "dev": "npx tailwindcss -i ./input.css -o ./output.css --watch"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "@babel/standalone": "^7.20.15",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "serve": "^14.2.5",
-    "tailwindcss": "^3.4.14"
+    "tailwindcss": "^3.4.1"
   }
 }
