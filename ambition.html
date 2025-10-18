@@ -52,7 +52,7 @@
   <div id="root" class="min-h-screen p-4"></div>
 
   <script type="text/babel">
-    console.log('Script running');
+    console.log('Script loading check:', typeof React, typeof ReactDOM, typeof Babel);
     const { useState, useEffect } = React;
 
     function getDateString(date = new Date()) {
@@ -102,15 +102,21 @@
       const [filterGoalId, setFilterGoalId] = useState('');
       const [lifetimePoints, setLifetimePoints] = useState(() => {
         const saved = localStorage.getItem('ambitionLifetimePoints');
-        return saved ? parseInt(saved) : 0;
+        return saved ? parseInt(saved, 10) || 0 : 0;
       });
       const [decayDays, setDecayDays] = useState(() => {
         const saved = localStorage.getItem('ambitionDecayDays');
-        return saved ? parseInt(saved) : 7;
+        return saved ? parseInt(saved, 10) || 7 : 7;
       });
       const [dailyHistory, setDailyHistory] = useState(() => {
         const saved = localStorage.getItem('ambitionDailyHistory');
-        return saved ? JSON.parse(saved) : {};
+        if (!saved) return {};
+        try {
+          return JSON.parse(saved) || {};
+        } catch (e) {
+          console.error('Failed to parse ambitionDailyHistory:', e);
+          return {};
+        }
       });
       const [lastProcessedDate, setLastProcessedDate] = useState(() => {
         const saved = localStorage.getItem('ambitionLastProcessedDate');
