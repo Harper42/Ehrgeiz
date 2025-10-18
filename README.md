@@ -1,3 +1,4 @@
+```markdown
 # Ehrgeiz - Gamified Productivity App
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/eb6470bc-2925-4fb9-9f88-8af2cb692b89/deploy-status)](https://app.netlify.com/sites/ehrgeiz/deploys)
@@ -19,8 +20,8 @@
   ```bash
   sudo apt update
   sudo apt install nodejs npm
+  ```
 
-- **Text Editor**: Vim or any editor (e.g., VS Code).
 - **Browser**: Brave, Firefox, or Chrome for testing
 
 ## Setup
