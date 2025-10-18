@@ -1,7 +1,7 @@
 ```markdown
 # Ambition - Gamified Productivity App
 
-[![Netlify Status](https://api.netlify.com/api/v1/badges/YOUR-SITE-ID/deploy-status)](https://app.netlify.com/sites/YOUR-SITE-NAME/deploys)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/eb6470bc-2925-4fb9-9f88-8af2cb692b89/deploy-status)](https://app.netlify.com/sites/ambition-game/deploys)
 
 **Ambition** is a web-based to-do list that gamifies productivity. Earn points by completing tasks, track goals, and stay motivated with a sleek, dark-themed UI. Built with React, Tailwind CSS, and local dependencies, it runs offline and stores data in `localStorage`.
 
@@ -27,7 +27,7 @@
 ## Setup
 
 1. **Clone or Set Up Directory**:
-   Ensure `~/Ehrgeiz` contains:
+   Ensure `~/Ambition` contains:
    ```plain
    ambition.html
    rules.html
@@ -47,7 +47,7 @@
 
 2. **Install Dependencies**:
    ```bash
-   cd ~/Ehrgeiz
+   cd ~/Ambition
    npm install --save-dev @babel/standalone@7.20.15 react@18.2.0 react-dom@18.2.0 tailwindcss@3.4.1
    ```
 
@@ -69,7 +69,7 @@
 ## Tutorial
 
 1. **Open Ambition**:
-   - Visit `http://localhost:3000/ambition.html` or live URL.
+   - Visit `http://localhost:3000/ambition.html` or live URL (`https://ambition-game.netlify.app`).
    - See yellow "Ambition" title, Lifetime Points, Goals, Tasks, Settings.
 
 2. **View Rules**:
@@ -119,32 +119,33 @@ Deploy to Netlify:
 
 2. **Manual Deploy**:
    ```bash
-   cd ~/Ehrgeiz
+   cd ~/Ambition
    npm run build
-   netlify deploy --prod --dir=/home/harper/Ehrgeiz
+   netlify deploy --prod --dir=/home/harper/Ambition
    ```
 
 3. **Auto-Deploys with GitHub**:
    - In Netlify dashboard:
-     - Link `Harper42/Ehrgeiz`.
+     - Link `Harper42/Ambition`.
      - Build command: `npm run build`.
      - Publish directory: `.`.
    - Auto-deploys on `git push`.
 
 4. **Troubleshooting CSS**:
-   - Ensure `output.css` is generated (`npm run build`).
+   - Run `npm run build` to generate `output.css`.
    - Check `<link rel="stylesheet" href="output.css">` in `ambition.html`, `rules.html`.
    - Verify `output.css` in Netlify deploy files (Dashboard > Deploys > Files).
    - Ensure `output.css` not in `.gitignore`.
    - Clear cache in Netlify dashboard > Deploys > Trigger deploy > Clear cache.
+   - Commit `output.css` to GitHub (`git add output.css`).
 
 ## Development
 
 - **Edit Code**: Use `ambition.html` for React, `rules.html` for static rules.
 - **Backup**:
    ```bash
-   cp -r ~/Ehrgeiz ~/Ehrgeiz-backup-$(date +%F)
-  ```
+   cp -r ~/Ambition ~/Ambition-backup-$(date +%F)
+   ```
 - **Debug**:
    - Console: `console.log(typeof React, typeof ReactDOM, typeof Babel);` → `"object object object"` (in `ambition.html`).
    - Network: Check `output.css`, `lib/` (status 200).

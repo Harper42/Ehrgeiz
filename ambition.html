@@ -21,13 +21,13 @@
       return date.toDateString();
     }
 
-    function EhrgeizApp() {
+    function AmbitionApp() {
       const [goals, setGoals] = useState(() => {
-        const saved = localStorage.getItem('ehrgeizGoals');
+        const saved = localStorage.getItem('ambitionGoals');
         return saved ? JSON.parse(saved) : [];
       });
       const [tasks, setTasks] = useState(() => {
-        const saved = localStorage.getItem('ehrgeizTasks');
+        const saved = localStorage.getItem('ambitionTasks');
         return saved ? JSON.parse(saved).map(task => ({
           ...task,
           notes: task.notes || '' // Backward compatibility
@@ -40,19 +40,19 @@
       const [important, setImportant] = useState(false);
       const [newTaskNotes, setNewTaskNotes] = useState('');
       const [lifetimePoints, setLifetimePoints] = useState(() => {
-        const saved = localStorage.getItem('ehrgeizLifetimePoints');
+        const saved = localStorage.getItem('ambitionLifetimePoints');
         return saved ? parseInt(saved) : 0;
       });
       const [decayDays, setDecayDays] = useState(() => {
-        const saved = localStorage.getItem('ehrgeizDecayDays');
+        const saved = localStorage.getItem('ambitionDecayDays');
         return saved ? parseInt(saved) : 7;
       });
       const [dailyHistory, setDailyHistory] = useState(() => {
-        const saved = localStorage.getItem('ehrgeizDailyHistory');
+        const saved = localStorage.getItem('ambitionDailyHistory');
         return saved ? JSON.parse(saved) : {};
       });
       const [lastProcessedDate, setLastProcessedDate] = useState(() => {
-        const saved = localStorage.getItem('ehrgeizLastProcessedDate');
+        const saved = localStorage.getItem('ambitionLastProcessedDate');
         return saved || getDateString(new Date(0));
       });
       const [editingTaskId, setEditingTaskId] = useState(null);
@@ -77,12 +77,12 @@
       };
 
       useEffect(() => {
-        localStorage.setItem('ehrgeizGoals', JSON.stringify(goals));
-        localStorage.setItem('ehrgeizTasks', JSON.stringify(tasks));
-        localStorage.setItem('ehrgeizLifetimePoints', lifetimePoints);
-        localStorage.setItem('ehrgeizDecayDays', decayDays);
-        localStorage.setItem('ehrgeizDailyHistory', JSON.stringify(dailyHistory));
-        localStorage.setItem('ehrgeizLastProcessedDate', lastProcessedDate);
+        localStorage.setItem('ambitionGoals', JSON.stringify(goals));
+        localStorage.setItem('ambitionTasks', JSON.stringify(tasks));
+        localStorage.setItem('ambitionLifetimePoints', lifetimePoints);
+        localStorage.setItem('ambitionDecayDays', decayDays);
+        localStorage.setItem('ambitionDailyHistory', JSON.stringify(dailyHistory));
+        localStorage.setItem('ambitionLastProcessedDate', lastProcessedDate);
       }, [goals, tasks, lifetimePoints, decayDays, dailyHistory, lastProcessedDate]);
 
       useEffect(() => {
@@ -421,7 +421,7 @@
       );
     }
 
-    ReactDOM.render(<EhrgeizApp />, document.getElementById('root'));
+    ReactDOM.render(<AmbitionApp />, document.getElementById('root'));
   </script>
 </body>
 </html>
