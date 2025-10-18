@@ -4,16 +4,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ambition - Gamified Productivity</title>
-  <script src="./lib/react.production.min.js"></script>
-  <script src="./lib/react-dom.production.min.js"></script>
+  <script src="./lib/react.development.js"></script>
+  <script src="./lib/react-dom.development.js"></script>
   <script src="./lib/babel.min.js"></script>
   <link href="./output.css" rel="stylesheet">
 </head>
 <body class="bg-gray-900 text-white">
   <div id="root" class="min-h-screen p-4"></div>
 
+  <!-- Auto-deploy test -->
   <script type="text/babel">
-    console.log('Script loading check:', typeof React, typeof ReactDOM, typeof Babel);
+    console.log('Script running');
     const { useState, useEffect } = React;
 
     function getDateString(date = new Date()) {
@@ -23,35 +24,14 @@
     function AmbitionApp() {
       const [goals, setGoals] = useState(() => {
         const saved = localStorage.getItem('ambitionGoals');
-        if (!saved) return [];
-        try {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed)
-            ? parsed.map((item, index) =>
-                typeof item === 'string' ? { id: Date.now() + index, text: item } : item
-              )
-            : [];
-        } catch (e) {
-          console.error('Failed to parse ambitionGoals:', e);
-          return [];
-        }
+        return saved ? JSON.parse(saved) : [];
       });
       const [tasks, setTasks] = useState(() => {
         const saved = localStorage.getItem('ambitionTasks');
-        if (!saved) return [];
-        try {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed)
-            ? parsed.map(task => ({
-                ...task,
-                notes: task.notes || '',
-                goalId: task.goalId || (task.goal ? task.goal : '')
-              }))
-            : [];
-        } catch (e) {
-          console.error('Failed to parse ambitionTasks:', e);
-          return [];
-        }
+        return saved ? JSON.parse(saved).map(task => ({
+          ...task,
+          notes: task.notes || '' // Backward compatibility
+        })) : [];
       });
       const [newTask, setNewTask] = useState('');
       const [newGoal, setNewGoal] = useState('');
@@ -59,25 +39,17 @@
       const [urgent, setUrgent] = useState(false);
       const [important, setImportant] = useState(false);
       const [newTaskNotes, setNewTaskNotes] = useState('');
-      const [newTaskGoalId, setNewTaskGoalId] = useState('');
-      const [filterGoalId, setFilterGoalId] = useState('');
       const [lifetimePoints, setLifetimePoints] = useState(() => {
         const saved = localStorage.getItem('ambitionLifetimePoints');
-        return saved ? parseInt(saved, 10) || 0 : 0;
+        return saved ? parseInt(saved) : 0;
       });
       const [decayDays, setDecayDays] = useState(() => {
         const saved = localStorage.getItem('ambitionDecayDays');
-        return saved ? parseInt(saved, 10) || 7 : 7;
+        return saved ? parseInt(saved) : 7;
       });
       const [dailyHistory, setDailyHistory] = useState(() => {
         const saved = localStorage.getItem('ambitionDailyHistory');
-        if (!saved) return {};
-        try {
-          return JSON.parse(saved) || {};
-        } catch (e) {
-          console.error('Failed to parse ambitionDailyHistory:', e);
-          return {};
-        }
+        return saved ? JSON.parse(saved) : {};
       });
       const [lastProcessedDate, setLastProcessedDate] = useState(() => {
         const saved = localStorage.getItem('ambitionLastProcessedDate');
@@ -89,8 +61,7 @@
         category: 'Relevant',
         urgent: false,
         important: false,
-        notes: '',
-        goalId: ''
+        notes: ''
       });
 
       const today = getDateString();
@@ -152,13 +123,13 @@
 
       const addGoal = () => {
         if (newGoal.trim() === '') return;
-        setGoals([...goals, { id: Date.now(), text: newGoal.trim() }]);
+        setGoals([...goals, newGoal.trim()]);
         setNewGoal('');
       };
 
       const addTask = () => {
         if (newTask.trim() === '') return;
-        const taskPoints = pointValues[category] + (urgent ? 4 : 0) + (important ? 4 : 0);
+        const taskPoints = pointValues[category];
         const newTaskObj = {
           id: Date.now(),
           text: newTask,
@@ -167,13 +138,11 @@
           urgent,
           important,
           createdDate: new Date().toISOString(),
-          notes: newTaskNotes,
-          goalId: newTaskGoalId
+          notes: newTaskNotes
         };
         setTasks([...tasks, newTaskObj]);
         setNewTask('');
         setNewTaskNotes('');
-        setNewTaskGoalId('');
         setUrgent(false);
         setImportant(false);
       };
@@ -181,16 +150,27 @@
       const completeTask = (id) => {
         const task = tasks.find(t => t.id === id);
         if (!task) return;
-        setTasks(tasks.filter(t => t.id !== id));
-        setLifetimePoints(prev => prev + task.points);
-        setDailyHistory(prev => ({
-          ...prev,
-          [today]: (prev[today] || 0) + task.points
-        }));
+
+        let pointsEarned = task.points;
+        let bonus = 0;
+        if (task.urgent || task.important) {
+          bonus += 4;
+        }
+        pointsEarned += bonus;
+
+        setLifetimePoints(prev => prev + pointsEarned);
+        const newBase = currentDayBase + pointsEarned;
+        setCurrentDayBase(newBase);
+        setDailyHistory(prev => ({ ...prev, [today]: newBase }));
+        setTasks(prev => prev.filter(t => t.id !== id));
       };
 
       const deleteTask = (id) => {
-        setTasks(tasks.filter(t => t.id !== id));
+        setTasks(prev => prev.filter(t => t.id !== id));
+        if (editingTaskId === id) {
+          setEditingTaskId(null);
+          setEditTask({ text: '', category: 'Relevant', urgent: false, important: false, notes: '' });
+        }
       };
 
       const startEditingTask = (task) => {
@@ -200,154 +180,131 @@
           category: task.category,
           urgent: task.urgent,
           important: task.important,
-          notes: task.notes,
-          goalId: task.goalId || ''
+          notes: task.notes
         });
       };
 
       const updateTask = (id) => {
-        const taskPoints = pointValues[editTask.category] + (editTask.urgent ? 4 : 0) + (editTask.important ? 4 : 0);
-        setTasks(tasks.map(task =>
-          task.id === id ? { ...task, ...editTask, points: taskPoints } : task
-        ));
+        if (editTask.text.trim() === '') return;
+        setTasks(prev =>
+          prev.map(task =>
+            task.id === id
+              ? { ...task, text: editTask.text, category: editTask.category, points: pointValues[editTask.category], urgent: editTask.urgent, important: editTask.important, notes: editTask.notes }
+              : task
+          )
+        );
         setEditingTaskId(null);
+        setEditTask({ text: '', category: 'Relevant', urgent: false, important: false, notes: '' });
       };
 
       const cancelEdit = () => {
         setEditingTaskId(null);
-        setEditTask({ text: '', category: 'Relevant', urgent: false, important: false, notes: '', goalId: '' });
+        setEditTask({ text: '', category: 'Relevant', urgent: false, important: false, notes: '' });
       };
 
-      const filteredTasks = filterGoalId
-        ? tasks.filter(task => task.goalId === filterGoalId)
-        : tasks;
+      const handleKeyPress = (e) => {
+        if (e.key === 'Enter') addTask();
+      };
+
+      const goalHandleKeyPress = (e) => {
+        if (e.key === 'Enter') addGoal();
+      };
 
       return (
-        <div class="max-w-4xl mx-auto">
-          <header class="bg-gray-800 p-4 rounded-lg mb-4">
-            <div class="flex justify-between items-center">
-              <h1 class="text-3xl font-bold text-yellow-400">Ambition</h1>
-              <a href="/rules" class="bg-blue-600 hover:bg-blue-700 p-2 rounded">Rules</a>
+        <div class="max-w-2xl mx-auto space-y-6">
+          <h1 class="text-4xl font-bold text-center mb-6 text-yellow-400">Ambition</h1>
+	  <a href="rules.html" className="bg-blue-600 hover:bg-blue-700 p-2 rounded">Rules</a>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h2 class="text-xl font-semibold">Lifetime Points: {lifetimePoints}</h2>
+            <div class="w-full bg-gray-700 rounded-full h-4 mt-2">
+              <div
+                class="bg-yellow-400 h-4 rounded-full transition-all"
+                style={{ width: `${Math.min((lifetimePoints / 1000) * 100, 100)}%` }}
+              ></div>
             </div>
-            <div class="mt-2">
-              <span class="text-xl">Lifetime Points: {lifetimePoints}</span>
-              <div class="mt-2">
-                <div class="w-full bg-gray-700 rounded-full h-4">
-                  <div
-                    class="bg-yellow-400 h-4 rounded-full"
-                    style={{ width: `${Math.min((lifetimePoints % 1000) / 10, 100)}%` }}
-                  ></div>
-                </div>
-              </div>
-            </div>
-          </header>
-          <div class="bg-gray-800 p-4 rounded-lg mb-4">
-            <h2 class="text-xl font-semibold mb-2">Main Goals</h2>
-            <div class="flex space-x-2 mb-2">
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold">Today ({today}): {currentDayBase} pts</h3>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Settings</h3>
+            <label class="block mb-2">
+              Backlog Decay (days):
+              <input
+                type="number"
+                value={decayDays}
+                onChange={(e) => setDecayDays(parseInt(e.target.value) || 7)}
+                class="ml-2 p-1 bg-gray-700 rounded text-white w-16"
+                min="1"
+              />
+            </label>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Main Goals</h3>
+            <div class="flex mb-2">
               <input
                 type="text"
                 value={newGoal}
                 onChange={(e) => setNewGoal(e.target.value)}
-                class="flex-1 p-2 bg-gray-600 rounded text-white"
-                placeholder="Add a goal..."
+                onKeyPress={goalHandleKeyPress}
+                class="flex-1 p-2 bg-gray-700 rounded-l-md"
+                placeholder="Add a main goal..."
               />
-              <button
-                onClick={addGoal}
-                class="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Add Goal
-              </button>
+              <button onClick={addGoal} class="p-2 bg-yellow-400 text-gray-900 rounded-r-md">Add</button>
             </div>
-            <ul class="list-disc pl-6">
-              {goals.map(goal => (
-                <li key={goal.id} class="text-gray-300">{goal.text}</li>
+            <ul class="space-y-1">
+              {goals.map((goal, i) => (
+                <li key={i} class="p-2 bg-gray-700 rounded text-sm">{goal}</li>
               ))}
             </ul>
           </div>
-          <div class="bg-gray-800 p-4 rounded-lg mb-4">
-            <h2 class="text-xl font-semibold mb-2">Add Task</h2>
-            <div class="space-y-2">
-              <input
-                type="text"
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                class="w-full p-2 bg-gray-600 rounded"
-                placeholder="Task description..."
-              />
-              <textarea
-                value={newTaskNotes}
-                onChange={(e) => setNewTaskNotes(e.target.value)}
-                class="w-full p-2 bg-gray-600 rounded"
-                placeholder="Task notes..."
-                rows="3"
-              ></textarea>
-              <div class="flex space-x-2 mb-2">
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  class="p-2 bg-gray-600 rounded flex-1"
-                >
-                  {Object.keys(pointValues).map(cat => (
-                    <option key={cat} value={cat}>{cat} ({pointValues[cat]} pts)</option>
-                  ))}
-                </select>
-                <select
-                  value={newTaskGoalId}
-                  onChange={(e) => setNewTaskGoalId(e.target.value)}
-                  class="p-2 bg-gray-600 rounded flex-1"
-                >
-                  <option value="">Unlinked</option>
-                  {goals.map(goal => (
-                    <option key={goal.id} value={goal.id}>{goal.text}</option>
-                  ))}
-                </select>
-              </div>
-              <div class="flex space-x-4 mb-2">
-                <label class="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={urgent}
-                    onChange={(e) => setUrgent(e.target.checked)}
-                    class="mr-1"
-                  />
-                  Urgent (+4 bonus)
-                </label>
-                <label class="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={important}
-                    onChange={(e) => setImportant(e.target.checked)}
-                    class="mr-1"
-                  />
-                  Important (+4 bonus)
-                </label>
-              </div>
-              <button
-                onClick={addTask}
-                class="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-              >
-                Add Task
-              </button>
-            </div>
-          </div>
-          <div class="bg-gray-800 p-4 rounded-lg mb-4">
-            <h2 class="text-xl font-semibold mb-2">Tasks</h2>
-            <div class="mb-4">
-              <label class="text-sm text-gray-300 mr-2">Filter by Goal:</label>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Add Task</h3>
+            <input
+              type="text"
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              onKeyPress={handleKeyPress}
+              class="w-full p-2 mb-2 bg-gray-700 rounded"
+              placeholder="Task description..."
+            />
+            <textarea
+              value={newTaskNotes}
+              onChange={(e) => setNewTaskNotes(e.target.value)}
+              class="w-full p-2 mb-2 bg-gray-700 rounded"
+              placeholder="Add notes..."
+              rows="3"
+            ></textarea>
+            <div class="flex space-x-2 mb-2">
               <select
-                value={filterGoalId}
-                onChange={(e) => setFilterGoalId(e.target.value)}
-                class="p-2 bg-gray-600 rounded"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                class="p-2 bg-gray-700 rounded flex-1"
               >
-                <option value="">All Tasks</option>
-                {goals.map(goal => (
-                  <option key={goal.id} value={goal.id}>{goal.text}</option>
+                {Object.keys(pointValues).map(cat => (
+                  <option key={cat} value={cat}>{cat} ({pointValues[cat]} pts)</option>
                 ))}
               </select>
             </div>
+            <div class="flex space-x-4 mb-2">
+              <label class="flex items-center">
+                <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} class="mr-1" />
+                Urgent (+4 bonus)
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" checked={important} onChange={(e) => setImportant(e.target.checked)} class="mr-1" />
+                Important (+4 bonus)
+              </label>
+            </div>
+            <button onClick={addTask} class="w-full p-2 bg-yellow-400 text-gray-900 rounded hover:bg-yellow-500">
+              Add Task
+            </button>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Tasks</h3>
             <ul class="space-y-2">
-              {filteredTasks.map(task => (
-                <li key={task.id} class="p-3 bg-gray-700 rounded">
+              {tasks.map(task => (
+                <li key={task.id} class="p-3 bg-gray-700 rounded-md">
                   {editingTaskId === task.id ? (
                     <div class="space-y-2">
                       <input
@@ -372,16 +329,6 @@
                         >
                           {Object.keys(pointValues).map(cat => (
                             <option key={cat} value={cat}>{cat} ({pointValues[cat]} pts)</option>
-                          ))}
-                        </select>
-                        <select
-                          value={editTask.goalId}
-                          onChange={(e) => setEditTask({ ...editTask, goalId: e.target.value })}
-                          class="p-2 bg-gray-600 rounded flex-1"
-                        >
-                          <option value="">Unlinked</option>
-                          {goals.map(goal => (
-                            <option key={goal.id} value={goal.id}>{goal.text}</option>
                           ))}
                         </select>
                       </div>
@@ -429,11 +376,6 @@
                           {task.urgent && <span class="ml-2 text-red-400">Urgent</span>}
                           {task.important && <span class="ml-2 text-blue-400">Important</span>}
                         </div>
-                        {task.goalId && (
-                          <div class="text-sm text-gray-300 mt-1">
-                            Goal: {goals.find(goal => goal.id === task.goalId)?.text || 'Unknown Goal'}
-                          </div>
-                        )}
                         {task.notes && (
                           <div class="text-sm text-gray-300 mt-1">Notes: {task.notes}</div>
                         )}
@@ -481,5 +423,5 @@
 
     ReactDOM.render(<AmbitionApp />, document.getElementById('root'));
   </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'990ba9108bbba468',t:'MTc2MDgyODUxNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
