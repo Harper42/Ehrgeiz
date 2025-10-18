@@ -1,5 +1,7 @@
 # Ehrgeiz - Gamified Productivity App
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/eb6470bc-2925-4fb9-9f88-8af2cb692b89/deploy-status)](https://app.netlify.com/sites/ehrgeiz/deploys)
+
 **Ehrgeiz** is a web-based to-do list that gamifies productivity. Earn points by completing tasks, track goals, and stay motivated with a sleek, dark-themed UI. Built with React, Tailwind CSS, and local dependencies, it runs offline and stores data in `localStorage`.
 
 ## Features
