@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ambition - Gamified Productivity</title>
+  <script src="./lib/react.development.js"></script>
+  <script src="./lib/react-dom.development.js"></script>
+  <script src="./lib/babel.min.js"></script>
+  <link href="./output.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white">
+  <div id="root" class="min-h-screen p-4"></div>
+
+  <!-- Auto-deploy test -->
+  <script type="text/babel">
+    console.log('Script running');
+    const { useState, useEffect } = React;
+
+    function getDateString(date = new Date()) {
+      return date.toDateString();
+    }
+
+    function AmbitionApp() {
+      const [goals, setGoals] = useState(() => {
+        const saved = localStorage.getItem('ambitionGoals');
+        return saved ? JSON.parse(saved) : [];
+      });
+      const [tasks, setTasks] = useState(() => {
+        const saved = localStorage.getItem('ambitionTasks');
+        return saved ? JSON.parse(saved).map(task => ({
+          ...task,
+          notes: task.notes || '' // Backward compatibility
+        })) : [];
+      });
+      const [newTask, setNewTask] = useState('');
+      const [newGoal, setNewGoal] = useState('');
+      const [category, setCategory] = useState('Relevant');
+      const [urgent, setUrgent] = useState(false);
+      const [important, setImportant] = useState(false);
+      const [newTaskNotes, setNewTaskNotes] = useState('');
+      const [lifetimePoints, setLifetimePoints] = useState(() => {
+        const saved = localStorage.getItem('ambitionLifetimePoints');
+        return saved ? parseInt(saved) : 0;
+      });
+      const [decayDays, setDecayDays] = useState(() => {
+        const saved = localStorage.getItem('ambitionDecayDays');
+        return saved ? parseInt(saved) : 7;
+      });
+      const [dailyHistory, setDailyHistory] = useState(() => {
+        const saved = localStorage.getItem('ambitionDailyHistory');
+        return saved ? JSON.parse(saved) : {};
+      });
+      const [lastProcessedDate, setLastProcessedDate] = useState(() => {
+        const saved = localStorage.getItem('ambitionLastProcessedDate');
+        return saved || getDateString(new Date(0));
+      });
+      const [editingTaskId, setEditingTaskId] = useState(null);
+      const [editTask, setEditTask] = useState({
+        text: '',
+        category: 'Relevant',
+        urgent: false,
+        important: false,
+        notes: ''
+      });
+
+      const today = getDateString();
+      const [currentDayBase, setCurrentDayBase] = useState(0);
+
+      const pointValues = {
+        Relevant: 5,
+        Other: 3,
+        Chores: 2,
+        People: 5,
+        Backlog: 5,
+        Abspielen: 1
+      };
+
+      useEffect(() => {
+        localStorage.setItem('ambitionGoals', JSON.stringify(goals));
+        localStorage.setItem('ambitionTasks', JSON.stringify(tasks));
+        localStorage.setItem('ambitionLifetimePoints', lifetimePoints);
+        localStorage.setItem('ambitionDecayDays', decayDays);
+        localStorage.setItem('ambitionDailyHistory', JSON.stringify(dailyHistory));
+        localStorage.setItem('ambitionLastProcessedDate', lastProcessedDate);
+      }, [goals, tasks, lifetimePoints, decayDays, dailyHistory, lastProcessedDate]);
+
+      useEffect(() => {
+        const now = Date.now();
+        const decayMs = decayDays * 86400000;
+        setTasks(prevTasks =>
+          prevTasks.map(task => {
+            if (task.category !== 'Backlog' && (now - new Date(task.createdDate).getTime()) > decayMs) {
+              return { ...task, category: 'Backlog', points: pointValues.Backlog };
+            }
+            return task;
+          })
+        );
+
+        const todayDate = new Date(today);
+        const lastProcessed = new Date(lastProcessedDate);
+        if (todayDate > lastProcessed) {
+          let newLifetime = lifetimePoints;
+          let currentDate = new Date(lastProcessed);
+          currentDate.setDate(currentDate.getDate() + 1);
+
+          while (currentDate < todayDate) {
+            const dateStr = getDateString(currentDate);
+            const thisBase = dailyHistory[dateStr] || 0;
+            const prevDateStr = getDateString(new Date(currentDate.getTime() - 86400000));
+            const prevBase = dailyHistory[prevDateStr] || 0;
+            if (thisBase > prevBase) {
+              newLifetime += 5;
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          setLifetimePoints(newLifetime);
+          setLastProcessedDate(today);
+        }
+
+        setCurrentDayBase(dailyHistory[today] || 0);
+      }, []);
+
+      const addGoal = () => {
+        if (newGoal.trim() === '') return;
+        setGoals([...goals, newGoal.trim()]);
+        setNewGoal('');
+      };
+
+      const addTask = () => {
+        if (newTask.trim() === '') return;
+        const taskPoints = pointValues[category];
+        const newTaskObj = {
+          id: Date.now(),
+          text: newTask,
+          category,
+          points: taskPoints,
+          urgent,
+          important,
+          createdDate: new Date().toISOString(),
+          notes: newTaskNotes
+        };
+        setTasks([...tasks, newTaskObj]);
+        setNewTask('');
+        setNewTaskNotes('');
+        setUrgent(false);
+        setImportant(false);
+      };
+
+      const completeTask = (id) => {
+        const task = tasks.find(t => t.id === id);
+        if (!task) return;
+
+        let pointsEarned = task.points;
+        let bonus = 0;
+        if (task.urgent || task.important) {
+          bonus += 4;
+        }
+        pointsEarned += bonus;
+
+        setLifetimePoints(prev => prev + pointsEarned);
+        const newBase = currentDayBase + pointsEarned;
+        setCurrentDayBase(newBase);
+        setDailyHistory(prev => ({ ...prev, [today]: newBase }));
+        setTasks(prev => prev.filter(t => t.id !== id));
+      };
+
+      const deleteTask = (id) => {
+        setTasks(prev => prev.filter(t => t.id !== id));
+        if (editingTaskId === id) {
+          setEditingTaskId(null);
+          setEditTask({ text: '', category: 'Relevant', urgent: false, important: false, notes: '' });
+        }
+      };
+
+      const startEditingTask = (task) => {
+        setEditingTaskId(task.id);
+        setEditTask({
+          text: task.text,
+          category: task.category,
+          urgent: task.urgent,
+          important: task.important,
+          notes: task.notes
+        });
+      };
+
+      const updateTask = (id) => {
+        if (editTask.text.trim() === '') return;
+        setTasks(prev =>
+          prev.map(task =>
+            task.id === id
+              ? { ...task, text: editTask.text, category: editTask.category, points: pointValues[editTask.category], urgent: editTask.urgent, important: editTask.important, notes: editTask.notes }
+              : task
+          )
+        );
+        setEditingTaskId(null);
+        setEditTask({ text: '', category: 'Relevant', urgent: false, important: false, notes: '' });
+      };
+
+      const cancelEdit = () => {
+        setEditingTaskId(null);
+        setEditTask({ text: '', category: 'Relevant', urgent: false, important: false, notes: '' });
+      };
+
+      const handleKeyPress = (e) => {
+        if (e.key === 'Enter') addTask();
+      };
+
+      const goalHandleKeyPress = (e) => {
+        if (e.key === 'Enter') addGoal();
+      };
+
+      return (
+        <div class="max-w-2xl mx-auto space-y-6">
+          <h1 class="text-4xl font-bold text-center mb-6 text-yellow-400">Ambition</h1>
+	  <a href="rules.html" className="bg-blue-600 hover:bg-blue-700 p-2 rounded">Rules</a>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h2 class="text-xl font-semibold">Lifetime Points: {lifetimePoints}</h2>
+            <div class="w-full bg-gray-700 rounded-full h-4 mt-2">
+              <div
+                class="bg-yellow-400 h-4 rounded-full transition-all"
+                style={{ width: `${Math.min((lifetimePoints / 1000) * 100, 100)}%` }}
+              ></div>
+            </div>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold">Today ({today}): {currentDayBase} pts</h3>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Settings</h3>
+            <label class="block mb-2">
+              Backlog Decay (days):
+              <input
+                type="number"
+                value={decayDays}
+                onChange={(e) => setDecayDays(parseInt(e.target.value) || 7)}
+                class="ml-2 p-1 bg-gray-700 rounded text-white w-16"
+                min="1"
+              />
+            </label>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Main Goals</h3>
+            <div class="flex mb-2">
+              <input
+                type="text"
+                value={newGoal}
+                onChange={(e) => setNewGoal(e.target.value)}
+                onKeyPress={goalHandleKeyPress}
+                class="flex-1 p-2 bg-gray-700 rounded-l-md"
+                placeholder="Add a main goal..."
+              />
+              <button onClick={addGoal} class="p-2 bg-yellow-400 text-gray-900 rounded-r-md">Add</button>
+            </div>
+            <ul class="space-y-1">
+              {goals.map((goal, i) => (
+                <li key={i} class="p-2 bg-gray-700 rounded text-sm">{goal}</li>
+              ))}
+            </ul>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Add Task</h3>
+            <input
+              type="text"
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              onKeyPress={handleKeyPress}
+              class="w-full p-2 mb-2 bg-gray-700 rounded"
+              placeholder="Task description..."
+            />
+            <textarea
+              value={newTaskNotes}
+              onChange={(e) => setNewTaskNotes(e.target.value)}
+              class="w-full p-2 mb-2 bg-gray-700 rounded"
+              placeholder="Add notes..."
+              rows="3"
+            ></textarea>
+            <div class="flex space-x-2 mb-2">
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                class="p-2 bg-gray-700 rounded flex-1"
+              >
+                {Object.keys(pointValues).map(cat => (
+                  <option key={cat} value={cat}>{cat} ({pointValues[cat]} pts)</option>
+                ))}
+              </select>
+            </div>
+            <div class="flex space-x-4 mb-2">
+              <label class="flex items-center">
+                <input type="checkbox" checked={urgent} onChange={(e) => setUrgent(e.target.checked)} class="mr-1" />
+                Urgent (+4 bonus)
+              </label>
+              <label class="flex items-center">
+                <input type="checkbox" checked={important} onChange={(e) => setImportant(e.target.checked)} class="mr-1" />
+                Important (+4 bonus)
+              </label>
+            </div>
+            <button onClick={addTask} class="w-full p-2 bg-yellow-400 text-gray-900 rounded hover:bg-yellow-500">
+              Add Task
+            </button>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Tasks</h3>
+            <ul class="space-y-2">
+              {tasks.map(task => (
+                <li key={task.id} class="p-3 bg-gray-700 rounded-md">
+                  {editingTaskId === task.id ? (
+                    <div class="space-y-2">
+                      <input
+                        type="text"
+                        value={editTask.text}
+                        onChange={(e) => setEditTask({ ...editTask, text: e.target.value })}
+                        class="w-full p-2 bg-gray-600 rounded"
+                        placeholder="Task description..."
+                      />
+                      <textarea
+                        value={editTask.notes}
+                        onChange={(e) => setEditTask({ ...editTask, notes: e.target.value })}
+                        class="w-full p-2 bg-gray-600 rounded"
+                        placeholder="Task notes..."
+                        rows="3"
+                      ></textarea>
+                      <div class="flex space-x-2 mb-2">
+                        <select
+                          value={editTask.category}
+                          onChange={(e) => setEditTask({ ...editTask, category: e.target.value })}
+                          class="p-2 bg-gray-600 rounded flex-1"
+                        >
+                          {Object.keys(pointValues).map(cat => (
+                            <option key={cat} value={cat}>{cat} ({pointValues[cat]} pts)</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div class="flex space-x-4 mb-2">
+                        <label class="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={editTask.urgent}
+                            onChange={(e) => setEditTask({ ...editTask, urgent: e.target.checked })}
+                            class="mr-1"
+                          />
+                          Urgent (+4 bonus)
+                        </label>
+                        <label class="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={editTask.important}
+                            onChange={(e) => setEditTask({ ...editTask, important: e.target.checked })}
+                            class="mr-1"
+                          />
+                          Important (+4 bonus)
+                        </label>
+                      </div>
+                      <div class="flex space-x-2">
+                        <button
+                          onClick={() => updateTask(task.id)}
+                          class="flex-1 p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          class="flex-1 p-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div class="flex justify-between items-center">
+                      <div class="flex-1">
+                        <div class="font-medium">{task.text}</div>
+                        <div class="text-sm text-gray-400">
+                          {task.category} ({task.points} pts) | Created: {new Date(task.createdDate).toLocaleDateString()}
+                          {task.urgent && <span class="ml-2 text-red-400">Urgent</span>}
+                          {task.important && <span class="ml-2 text-blue-400">Important</span>}
+                        </div>
+                        {task.notes && (
+                          <div class="text-sm text-gray-300 mt-1">Notes: {task.notes}</div>
+                        )}
+                      </div>
+                      <div class="flex space-x-2">
+                        <button
+                          onClick={() => startEditingTask(task)}
+                          class="p-2 bg-yellow-500 text-gray-900 rounded hover:bg-yellow-600"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => completeTask(task.id)}
+                          class="p-2 bg-green-500 text-white rounded hover:bg-green-600"
+                        >
+                          Complete
+                        </button>
+                        <button
+                          onClick={() => deleteTask(task.id)}
+                          class="p-2 bg-red-500 text-white rounded hover:bg-red-600"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div class="bg-gray-800 p-4 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Recent Daily Scores</h3>
+            <ul class="space-y-1">
+              {Object.entries(dailyHistory)
+                .sort(([a], [b]) => new Date(b) - new Date(a))
+                .slice(0, 7)
+                .map(([date, pts]) => (
+                  <li key={date} class="text-sm">{date}: {pts} pts</li>
+                ))}
+            </ul>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<AmbitionApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>
