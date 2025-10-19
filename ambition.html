@@ -21,6 +21,24 @@
       return date.toDateString();
     }
 
+    function Notification({ message, onClose }) {
+      useEffect(() => {
+        const timer = setTimeout(() => {
+          onClose();
+        }, 30000);
+        return () => clearTimeout(timer);
+      }, [onClose]);
+
+      return (
+        <div
+          className="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-md p-4 bg-green-500 text-white text-center rounded-b-lg shadow-lg animate-slide-down cursor-pointer z-50"
+          onClick={onClose}
+        >
+          {message}
+        </div>
+      );
+    }
+
     function AmbitionApp() {
       const [goals, setGoals] = useState(() => {
         const saved = localStorage.getItem('ambitionGoals');
@@ -106,6 +124,7 @@
       });
       const [editingGoalId, setEditingGoalId] = useState(null);
       const [editGoalText, setEditGoalText] = useState('');
+      const [notification, setNotification] = useState(null);
 
       const today = getDateString();
       const [currentDayBase, setCurrentDayBase] = useState(0);
@@ -172,6 +191,14 @@
         }
       };
 
+      const showNotification = (message) => {
+        setNotification(message);
+      };
+
+      const closeNotification = () => {
+        setNotification(null);
+      };
+
       const addGoal = () => {
         if (newGoal.trim() === '') return;
         const newGoalObj = { id: String(Date.now()), text: newGoal.trim() };
@@ -214,6 +241,7 @@
         setTasks(tasks.map(task =>
           task.goalId === id ? { ...task, goalId: '' } : task
         ));
+        showNotification('Good Job! You did it!');
         console.log('Completed goal ID:', id, 'Tasks unlinked');
       };
 
@@ -249,6 +277,7 @@
           ...prev,
           [today]: (prev[today] || 0) + task.points
         }));
+        showNotification('Good Job! You did it!');
         console.log('Completed task:', task);
       };
 
@@ -291,6 +320,7 @@
 
       return (
         <div className="max-w-4xl mx-auto bg-gray-900 text-white min-h-screen px-4 sm:px-4" style={{ maxWidth: '64rem', marginLeft: 'auto', marginRight: 'auto', paddingLeft: '1rem', paddingRight: '1rem' }}>
+          {notification && <Notification message={notification} onClose={closeNotification} />}
           <header className="bg-gray-800 p-4 rounded-lg mb-4 max-w-4xl mx-auto px-4 sm:px-4">
             <div className="flex justify-between items-center">
               <h1 className="text-3xl font-bold text-yellow-400">Ambition</h1>
@@ -606,7 +636,7 @@
                 ))}
             </ul>
           </div>
-	  <footer className="bg-gray-800 p-4 text-center max-w-4xl mx-auto px-4 sm:px-4" style={{ backgroundColor: '#1f2937', padding: '1rem', textAlign: 'center' }}>
+          <footer className="bg-gray-800 p-4 text-center max-w-4xl mx-auto px-4 sm:px-4" style={{ backgroundColor: '#1f2937', padding: '1rem', textAlign: 'center' }}>
             <p>© 2025 Ambition. MIT License.</p>
           </footer>
         </div>
