@@ -49,6 +49,11 @@ module.exports = {
     'justify-between',
     'items-center',
     'text-lg',
-    'w-20'
+    'w-20',
+    'flex-col',
+    'flex-grow',
+    'text-center',
+    'text-2xl',
+    'pl-5'
   ]
 }
