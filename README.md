@@ -1,6 +1,9 @@
 ```markdown
 # Ambition - Gamified Productivity App
 
+## License
+Licensed under the MIT License (see LICENSE).
+
 [![Vercel Status](https://vercel-badge.pages.dev/api?project=ambition)](https://vercel.com/projects/ambition)
 
 **Ambition** is a web-based to-do list that gamifies productivity. Earn points by completing tasks, track goals, and stay motivated with a sleek, dark-themed UI. Built with React, Tailwind CSS, and local dependencies, it runs offline and stores data in `localStorage`.
