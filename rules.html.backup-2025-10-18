@@ -6,20 +6,20 @@
   <title>Ambition - Rules</title>
   <link rel="stylesheet" href="output.css">
 </head>
-<body className="bg-gray-900 text-white min-h-screen flex flex-col">
-  <header className="bg-gray-800 p-4">
-    <div className="max-w-4xl mx-auto flex justify-between items-center">
-      <h1 className="text-3xl font-bold text-yellow-400">Ambition Rules</h1>
-      <a href="ambition.html" className="bg-yellow-500 text-gray-900 p-2 rounded hover:bg-yellow-600">Back to App</a>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+  <header class="bg-gray-800 p-4">
+    <div class="max-w-4xl mx-auto flex justify-between items-center">
+      <h1 class="text-3xl font-bold text-yellow-400">Ambition Rules</h1>
+      <a href="ambition.html" class="bg-blue-600 hover:bg-blue-700 p-2 rounded">Back to App</a>
     </div>
   </header>
-  <main className="max-w-4xl mx-auto p-4 flex-grow">
-    <h2 className="text-2xl font-bold mb-4">Game Rules</h2>
-    <p className="mb-4">Ambition is a gamified productivity app where you earn points by completing tasks, set goals, and stay motivated. Here’s how it works:</p>
-    <ul className="list-disc pl-6 mb-4">
+  <main class="max-w-4xl mx-auto p-4 flex-grow">
+    <h2 class="text-2xl font-bold mb-4">Game Rules</h2>
+    <p class="mb-4">Ambition is a gamified productivity app where you earn points by completing tasks, set goals, and stay motivated. Here’s how it works:</p>
+    <ul class="list-disc pl-6 mb-4">
       <li><strong>Tasks</strong>: Add tasks with a category, optional Urgent/Important flags, notes, and an optional goal link.</li>
       <li><strong>Categories & Points</strong>:
-        <ul className="list-disc pl-5 mb-4">
+        <ul class="list-disc pl-5 mb-4">
           <li><strong>Relevant (5 points)</strong>: Tasks directly tied to your core goals or priorities, such as advancing a key project or personal objective.</li>
           <li><strong>Other (3 points)</strong>: Tasks that contribute to your goals but are less critical, like secondary activities or exploratory work.</li>
           <li><strong>Chores (2 points)</strong>: Routine household or maintenance tasks, such as cleaning, grocery shopping, or organizing.</li>
@@ -29,7 +29,7 @@
         </ul>
       </li>
       <li><strong>Bonuses</strong>: +4 points for Urgent, +4 for Important (e.g., Relevant + Urgent = 9 points).</li>
-      <li><strong>Goals</strong>: Set main goals to guide your tasks. Link tasks to a goal using a dropdown when adding or editing tasks. You can edit goal names, delete goals, or mark goals as complete, which removes them and unlinks associated tasks.</li>
+      <li><strong>Goals</strong>: Set main goals to guide your tasks. Link tasks to a goal using a dropdown when adding or editing tasks to track progress toward specific objectives.</li>
       <li><strong>Task Filtering</strong>: Use the dropdown in the Tasks section to view only tasks linked to a specific goal or all tasks.</li>
       <li><strong>Backlog Decay</strong>: Tasks move to Backlog (5 points) after a set number of days (configurable in Settings).</li>
       <li><strong>Points Tracking</strong>: Lifetime Points and daily scores update on task completion. Progress bar fills to 1000 points.</li>
@@ -37,7 +37,7 @@
     </ul>
     <p>Complete tasks, earn points, and level up your productivity!</p>
   </main>
-  <footer className="bg-gray-800 p-4 text-center">
+  <footer class="bg-gray-800 p-4 text-center">
     <p>&copy; 2025 Ambition. MIT License.</p>
   </footer>
 </body>
