@@ -21,24 +21,6 @@
       return date.toDateString();
     }
 
-    function Notification({ message, onClose }) {
-      useEffect(() => {
-        const timer = setTimeout(() => {
-          onClose();
-        }, 30000);
-        return () => clearTimeout(timer);
-      }, [onClose]);
-
-      return (
-        <div
-          className="fixed top-0 left-1/2 transform -translate-x-1/2 w-full max-w-md p-4 bg-green-500 text-white text-center rounded-b-lg shadow-lg animate-slide-down cursor-pointer z-50"
-          onClick={onClose}
-        >
-          {message}
-        </div>
-      );
-    }
-
     function AmbitionApp() {
       const [goals, setGoals] = useState(() => {
         const saved = localStorage.getItem('ambitionGoals');
@@ -113,6 +95,14 @@
         const saved = localStorage.getItem('ambitionLastProcessedDate');
         return saved || getDateString(new Date(0));
       });
+      const [streak, setStreak] = useState(() => {
+        const saved = localStorage.getItem('ambitionStreak');
+        return saved ? parseInt(saved, 10) || 0 : 0;
+      });
+      const [streakDates, setStreakDates] = useState(() => {
+        const saved = localStorage.getItem('ambitionStreakDates');
+        return saved ? JSON.parse(saved) || [] : [];
+      });
       const [editingTaskId, setEditingTaskId] = useState(null);
       const [editTask, setEditTask] = useState({
         text: '',
@@ -124,7 +114,6 @@
       });
       const [editingGoalId, setEditingGoalId] = useState(null);
       const [editGoalText, setEditGoalText] = useState('');
-      const [notification, setNotification] = useState(null);
 
       const today = getDateString();
       const [currentDayBase, setCurrentDayBase] = useState(0);
@@ -145,8 +134,10 @@
         localStorage.setItem('ambitionDecayDays', decayDays);
         localStorage.setItem('ambitionDailyHistory', JSON.stringify(dailyHistory));
         localStorage.setItem('ambitionLastProcessedDate', lastProcessedDate);
-        console.log('Saved to localStorage - Goals:', goals, 'Tasks:', tasks, 'Decay Days:', decayDays);
-      }, [goals, tasks, lifetimePoints, decayDays, dailyHistory, lastProcessedDate]);
+        localStorage.setItem('ambitionStreak', streak);
+        localStorage.setItem('ambitionStreakDates', JSON.stringify(streakDates));
+        console.log('Saved to localStorage - Goals:', goals, 'Tasks:', tasks, 'Decay Days:', decayDays, 'Streak:', streak, 'Streak Dates:', streakDates);
+      }, [goals, tasks, lifetimePoints, decayDays, dailyHistory, lastProcessedDate, streak, streakDates]);
 
       useEffect(() => {
         const now = Date.now();
@@ -179,24 +170,24 @@
           }
           setLifetimePoints(newLifetime);
           setLastProcessedDate(today);
+
+          const yesterday = getDateString(new Date(todayDate.getTime() - 86400000));
+          const hasActivityToday = dailyHistory[today] > 0 || streakDates.includes(today);
+          const hasActivityYesterday = dailyHistory[yesterday] > 0 || streakDates.includes(yesterday);
+          if (!hasActivityToday && !hasActivityYesterday) {
+            setStreak(0);
+            setStreakDates([]);
+          }
         }
 
         setCurrentDayBase(dailyHistory[today] || 0);
-      }, []);
+      }, [dailyHistory, lastProcessedDate, streakDates]);
 
       const handleDecayDaysChange = (e) => {
         const value = parseInt(e.target.value, 10);
         if (!isNaN(value) && value >= 1) {
           setDecayDays(value);
         }
-      };
-
-      const showNotification = (message) => {
-        setNotification(message);
-      };
-
-      const closeNotification = () => {
-        setNotification(null);
       };
 
       const addGoal = () => {
@@ -241,8 +232,24 @@
         setTasks(tasks.map(task =>
           task.goalId === id ? { ...task, goalId: '' } : task
         ));
-        showNotification('Good Job! You did it!');
         console.log('Completed goal ID:', id, 'Tasks unlinked');
+        const todayDate = getDateString();
+        if (!streakDates.includes(todayDate)) {
+          const newStreakDates = [...streakDates, todayDate];
+          const sortedDates = newStreakDates.sort((a, b) => new Date(a) - new Date(b));
+          let newStreak = 1;
+          for (let i = 1; i < sortedDates.length; i++) {
+            const prevDate = new Date(sortedDates[i - 1]);
+            const currDate = new Date(sortedDates[i]);
+            if ((currDate - prevDate) === 86400000) {
+              newStreak++;
+            } else if ((currDate - prevDate) > 86400000) {
+              newStreak = 1;
+            }
+          }
+          setStreak(newStreak);
+          setStreakDates(newStreakDates);
+        }
       };
 
       const addTask = () => {
@@ -277,8 +284,24 @@
           ...prev,
           [today]: (prev[today] || 0) + task.points
         }));
-        showNotification('Good Job! You did it!');
         console.log('Completed task:', task);
+        const todayDate = getDateString();
+        if (!streakDates.includes(todayDate)) {
+          const newStreakDates = [...streakDates, todayDate];
+          const sortedDates = newStreakDates.sort((a, b) => new Date(a) - new Date(b));
+          let newStreak = 1;
+          for (let i = 1; i < sortedDates.length; i++) {
+            const prevDate = new Date(sortedDates[i - 1]);
+            const currDate = new Date(sortedDates[i]);
+            if ((currDate - prevDate) === 86400000) {
+              newStreak++;
+            } else if ((currDate - prevDate) > 86400000) {
+              newStreak = 1;
+            }
+          }
+          setStreak(newStreak);
+          setStreakDates(newStreakDates);
+        }
       };
 
       const deleteTask = (id) => {
@@ -320,7 +343,6 @@
 
       return (
         <div className="max-w-4xl mx-auto bg-gray-900 text-white min-h-screen px-4 sm:px-4" style={{ maxWidth: '64rem', marginLeft: 'auto', marginRight: 'auto', paddingLeft: '1rem', paddingRight: '1rem' }}>
-          {notification && <Notification message={notification} onClose={closeNotification} />}
           <header className="bg-gray-800 p-4 rounded-lg mb-4 max-w-4xl mx-auto px-4 sm:px-4">
             <div className="flex justify-between items-center">
               <h1 className="text-3xl font-bold text-yellow-400">Ambition</h1>
@@ -340,6 +362,14 @@
                   style={{ width: `${Math.min((lifetimePoints % 1000) / 10, 100)}%` }}
                 ></div>
               </div>
+            </div>
+            <div className="mt-2">
+              <span className="text-lg text-gray-300">Streak: {streak} days</span>
+              {streak >= 3 && (
+                <span className="ml-4 inline-flex items-center px-3 py-1 rounded-full bg-green-500 text-white text-sm font-medium">
+                  3-Day Streak Badge 🎉
+                </span>
+              )}
             </div>
           </header>
           <div className="bg-gray-800 p-4 rounded-lg mb-4 max-w-4xl mx-auto px-4 sm:px-4">
